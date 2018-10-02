@@ -31,7 +31,7 @@
 # include <stddef.h>
 # include <stdint.h>
 
-#include USE_BZ2 (0)
+#define USE_BZ2 (0)
 
 struct bsdiff_stream
 {

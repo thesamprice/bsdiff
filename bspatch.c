@@ -129,7 +129,7 @@ static int raw_read(const struct bspatch_stream* stream, void* buffer, int lengt
 {
 	int n;
 	int bz2err;
-	BZFILE* bz2;
+
 	size_t bytes_read = fread ( buffer, 1, length, (FILE *) stream->opaque );
 
 	if (bytes_read != length)

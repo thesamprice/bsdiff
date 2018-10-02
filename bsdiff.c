@@ -412,12 +412,13 @@ int main(int argc,char *argv[])
 	BSHeader header;
 	FILE * pf;
 	struct bsdiff_stream stream;
-	BZFILE* bz2;
 
-	memset(&bz2, 0, sizeof(bz2));
 	stream.malloc = malloc;
 	stream.free = free;
 #if USE_BZ2
+	BZFILE* bz2;
+
+	memset(&bz2, 0, sizeof(bz2));
 	if(use_bz2)
 		stream.write = bz2_write;
 	else
