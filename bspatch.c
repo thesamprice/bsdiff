@@ -96,7 +96,7 @@ int bspatch(const uint8_t* old, int64_t oldsize, uint8_t* new, int64_t newsize, 
 
 #if defined(BSPATCH_EXECUTABLE)
 
-#include <bzlib.h>
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -107,6 +107,9 @@ int bspatch(const uint8_t* old, int64_t oldsize, uint8_t* new, int64_t newsize, 
 #include <unistd.h>
 #include <fcntl.h>
 #include "bscommon.h"
+
+#if USE_BZ2
+#include <bzlib.h>
 static int bz2_read(const struct bspatch_stream* stream, void* buffer, int length)
 {
 	int n;
@@ -120,6 +123,7 @@ static int bz2_read(const struct bspatch_stream* stream, void* buffer, int lengt
 
 	return 0;
 }
+#endif
 
 static int raw_read(const struct bspatch_stream* stream, void* buffer, int length)
 {
@@ -143,7 +147,9 @@ int main(int argc,char * argv[])
 	BSHeader header;
 	uint8_t *old, *new;
 	int64_t oldsize, newsize;
+#if	USE_BZ2
 	BZFILE* bz2;
+#endif
 	struct bspatch_stream stream;
 	struct stat sb;
 
@@ -182,6 +188,7 @@ int main(int argc,char * argv[])
 		(close(fd)==-1)) err(1,"%s",argv[1]);
 	if((new=malloc(newsize+1))==NULL) err(1,NULL);
 
+#if USE_BZ2
 	if(use_bz2)
 	{
 		if (NULL == (bz2 = BZ2_bzReadOpen(&bz2err, f, 0, 0, NULL, 0)))
@@ -190,7 +197,9 @@ int main(int argc,char * argv[])
 		stream.opaque = bz2;
 			
 	}
-	else{
+	else
+	#endif
+	{
 		stream.read = raw_read;
 		stream.opaque = f;
 
@@ -199,11 +208,13 @@ int main(int argc,char * argv[])
 	if (bspatch(old, oldsize, new, newsize, &stream))
 		errx(1, "bspatch");
 
+#if USE_BZ2
 	if(use_bz2)
 	{
 		/* Clean up the bzip2 reads */
 		BZ2_bzReadClose(&bz2err, bz2);
 	}
+	#endif
 	fclose(f);
 
 	/* Write the new file */

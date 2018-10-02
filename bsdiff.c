@@ -369,13 +369,15 @@ int bsdiff(const uint8_t* old, int64_t oldsize, const uint8_t* new, int64_t news
 
 #include <sys/types.h>
 
-#include <bzlib.h>
+
 #include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#if USE_BZ2
+#include <bzlib.h>
 static int bz2_write(struct bsdiff_stream* stream, const void* buffer, int size)
 {
 	int bz2err;
@@ -388,7 +390,7 @@ static int bz2_write(struct bsdiff_stream* stream, const void* buffer, int size)
 
 	return 0;
 }
-
+#endif
 static int raw_write(struct bsdiff_stream* stream, const void* buffer, int size)
 {
 	int bz2err;
@@ -415,10 +417,15 @@ int main(int argc,char *argv[])
 	memset(&bz2, 0, sizeof(bz2));
 	stream.malloc = malloc;
 	stream.free = free;
+#if USE_BZ2
 	if(use_bz2)
 		stream.write = bz2_write;
 	else
+#endif
+	{
 		stream.write = raw_write;
+	}
+
 	if(argc!=4) errx(1,"usage: %s oldfile newfile patchfile\n",argv[0]);
 
 	/* Allocate oldsize+1 bytes instead of oldsize bytes to ensure
@@ -454,26 +461,32 @@ int main(int argc,char *argv[])
 
 	if(	fwrite(&header,sizeof(header),1,pf) != 1)
 		err(1, "Failed to write header");
-
+#if USE_BZ2
 	if(use_bz2)
 	{
 		if (NULL == (bz2 = BZ2_bzWriteOpen(&bz2err, pf, 9, 0, 0)))
 			errx(1, "BZ2_bzWriteOpen, bz2err=%d", bz2err);
 		stream.opaque = bz2;			
 	}
-	else{
-		stream.opaque = pf;
+	else
+#else
+	{
+		stream.opaque = pf;		
 	}
+
+#endif
 
 	if (bsdiff(old, oldsize, new, newsize, &stream))
 		err(1, "bsdiff");
 
+#if USE_BZ2
 	if(use_bz2)
 	{
 		BZ2_bzWriteClose(&bz2err, bz2, 0, NULL, NULL);
 		if (bz2err != BZ_OK)
 			err(1, "BZ2_bzWriteClose, bz2err=%d", bz2err);
 	}
+#endif
 
 	if (fclose(pf))
 		err(1, "fclose");
